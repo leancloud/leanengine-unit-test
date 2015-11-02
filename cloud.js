@@ -307,7 +307,6 @@ AV.Cloud.define('testBareAVObjectParams', function(request, response) {
   request.params.should.be["instanceof"](AV.Object);
   request.params.get('name').should.be.equal('avObject');
   request.params.get('avFile').should.be["instanceof"](AV.File);
-  request.params.get('avFile').name().should.be.equal('hello.txt');
   response.success();
 });
 
@@ -315,7 +314,6 @@ AV.Cloud.define('testAVObjectsArrayParams', function(request, response) {
   request.params.forEach(function(object) {
     object.get('name').should.be.equal('avObject');
     object.get('avFile').should.be["instanceof"](AV.File);
-    object.get('avFile').name().should.be.equal('hello.txt');
   });
   response.success();
 });
