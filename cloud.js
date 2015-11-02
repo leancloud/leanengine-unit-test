@@ -1,6 +1,7 @@
 'use strict';
 var assert = require('assert');
 var AV = require('leanengine');
+var should = require('should');
 
 /**
  * 一个简单的云代码方法
