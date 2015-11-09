@@ -59,6 +59,26 @@ AV.Cloud.define("averageStars", function(request, response) {
   });
 });
 
+AV.Cloud.define('averageStars_CQL', function(request, response) {
+  var query = "select stars from Review where movie = '" + request.params.movie + "'";
+  AV.Query.doCloudQuery(query, {
+    success: function(results) {
+      results = results.results;
+      var i, sum;
+      sum = 0;
+      i = 0;
+      while (i < results.length) {
+        sum += results[i].get("stars");
+        ++i;
+      }
+      return response.success(sum / results.length);
+    },
+    error: function(err) {
+      return response.error("movie lookup failed:" + err);
+    }
+  });
+});
+
 AV.Cloud.define("getArmor", function(request, response) {
   var query;
   query = new AV.Query("Armor");
