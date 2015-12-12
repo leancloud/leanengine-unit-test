@@ -7,20 +7,23 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var cookieSession = require('cookie-session');
+var request = require('request');
 var AV = require('leanengine');
+var sniper = require('leanengine-sniper');
 var todos = require('./routes/todos');
 var cloud = require('./cloud');
 
 var client;
 
 if (process.env.NODE_ENV === 'production') {
-  client = require('redis').createClient(process.env.REDIS_URL_DeDp8JUq8);
+  client = require('redis').createClient(process.env.REDIS_URL_test);
   client.on('error', function(err) {
     return console.log('redis err: %s', err);
   });
 }
 
 var app = express();
+app.use(sniper({AV: AV}));
 
 // 设置 view 引擎
 app.set('views', path.join(__dirname, 'views'));
@@ -34,7 +37,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.set('trust proxy', 1) // trust first proxy 
+app.set('trust proxy', 1) // trust first proxy
  
 app.use(cookieSession({
     name: 'session',
@@ -43,6 +46,8 @@ app.use(cookieSession({
 
 // 加载 cookieSession 以支持 AV.User 的会话状态
 app.use(AV.Cloud.CookieSession({ secret: 'my secret', maxAge: 3600000, fetchUser: true }));
+
+app.use(AV.Cloud.HttpsRedirect());
 
 // 未处理异常捕获 middleware
 app.use(function(req, res, next) {
@@ -199,6 +204,24 @@ app.get('/userMatching', function(req, res) {
       }
     });
   }), Math.floor(Math.random() * 2000 + 1));
+});
+
+app.post('/callSelf', function(req, res, next) {
+  if (!req.body.headers) {
+    req.body.headers = {};
+  }
+  req.body.headers['x-forwarded-proto'] = req.headers['x-forwarded-proto'];
+  request({
+    url: ('http://127.0.0.1:' + process.env.LC_APP_PORT || 3000) + req.body.path,
+    method: req.body.method || 'GET',
+    headers: req.body.headers,
+    body: req.body.body
+  }, function(err, response, body) {
+    if (err) {
+      return next(err);
+    }
+    res.status(response.statusCode).send(body);
+  });
 });
 
 // 如果任何路由都没匹配到，则认为 404

@@ -3,11 +3,21 @@ var assert = require('assert');
 var AV = require('leanengine');
 var should = require('should');
 
-/**
- * 一个简单的云代码方法
- */
 AV.Cloud.define('hello', function(request, response) {
-  response.success('Hello world!');
+  response.success({action: "hello", name: request.params.name});
+});
+
+AV.Cloud.define('foo', function(request, response) {
+  assert.ok(request.meta.remoteAddress);
+  response.success("bar");
+});
+
+AV.Cloud.define('choice', function(req, res) {
+  if (req.params.choice) {
+    res.success('OK~');
+  } else {
+    res.error('OMG...');
+  }
 });
 
 AV.Cloud.define("testSuccess", function(request, response) {
@@ -18,9 +28,11 @@ AV.Cloud.define("testError", function(request, response) {
   return response.error("errorMsg");
 });
 
-AV.Cloud.define('throwError', function(req, res) {
-  noThisMethod(); // jshint ignore:line
-  return res.success();
+AV.Cloud.define('testThrowError', function(request, response) {
+  /* jshint ignore:start */
+  noThisMethod();
+  /* jshint ignore:end */
+  response.success();
 });
 
 AV.Cloud.define('asyncError', function(req, res) {
@@ -336,6 +348,115 @@ AV.Cloud.define('testAVObjectsArrayParams', function(request, response) {
     object.get('avFile').should.be["instanceof"](AV.File);
   });
   response.success();
+});
+
+AV.Cloud.define('testUser', function(request, response) {
+  assert.equal(request.user.className, '_User');
+  assert.equal(request.user.id, '54fd6a03e4b06c41e00b1f40');
+  assert.equal(request.user.get('username'), 'admin');
+  assert.equal(request.user, AV.User.current());
+  response.success("ok");
+});
+
+AV.Cloud.define('testRun', function(request, response) {
+  AV.Cloud.run('hello', {name: '李四'}, {
+    success: function(data) {
+      assert.deepEqual(data, {action: "hello", name: '李四'});
+      response.success();
+    }
+  });
+});
+
+AV.Cloud.define('testRun_options_callback', function(request, response) {
+  AV.Cloud.run('choice', {choice: true}, {
+    success: function(data) {
+      assert.equal('OK~', data);
+      AV.Cloud.run('choice', {choice: false}, {
+        success: function(data) {
+          assert.ifError(data);
+        },
+        error: function(err) {
+          assert.equal('OMG...', err);
+          response.success();
+        }
+      });
+    },
+    error: function(err) {
+      assert.ifError(err);
+    }
+  });
+});
+
+AV.Cloud.define('testRun_promise', function(request, response) {
+  AV.Cloud.run('choice', {choice: true}).then(function(data) {
+    assert.equal('OK~', data);
+    AV.Cloud.run('choice', {choice: false}).then(function(data) {
+      assert.ifError(data);
+    }, function(err) {
+      assert.equal('OMG...', err);
+      response.success();
+    });
+  },
+  function(err) {
+    assert.ifError(err);
+  });
+});
+
+AV.Cloud.define('testRunWithUser', function(request, response) {
+  AV.Cloud.run('testUser', {}, {
+    success: function(data) {
+      assert.equal('ok', data);
+      response.success();
+    }
+  });
+});
+
+AV.Cloud.define('testRunWithAVObject', function(request, response) {
+ AV.Cloud.run('complexObject', {}, {
+   success: function(datas) {
+     response.success(datas);
+   }
+ });
+});
+
+AV.Cloud.onVerified('sms', function(request) {
+  assert.equal(request.object.className, '_User');
+  assert.equal(request.object.id, '54fd6a03e4b06c41e00b1f40');
+  assert.equal(request.object.get('username'), 'admin');
+});
+
+AV.Cloud.define('testThrowError', function(request, response) {
+  /* jshint ignore:start */
+  noThisMethod();
+  /* jshint ignore:end */
+  response.success();
+});
+
+AV.Cloud.define("userMatching", function(req, res) {
+  assert.equal(req.user, AV.User.current());
+  if(req.params.assertName) {
+    assert.equal(req.params.assertName, req.user.get('username'));
+  } else {
+    assert.equal(req.user, null);
+    assert.equal(AV.User.current(), null);
+  }
+  setTimeout(function() {
+    // 为了更加靠谱的验证串号问题，走一次网络 IO
+    var query = new AV.Query('TestObject');
+    query.get('55069f5be4b0c93838ed9b17', {
+      success: function(obj) {
+        assert.equal(req.user, AV.User.current());
+        if(req.params.assertName) {
+          assert.equal(req.params.assertName, req.user.get('username'));
+        } else {
+          assert.equal(req.user, null);
+          assert.equal(AV.User.current(), null);
+        }
+        assert.equal(obj.get('foo'), 'bar');
+        res.success({reqUser: req.user, currentUser: AV.User.current()});
+      }
+    });
+  }, Math.floor((Math.random() * 500) + 1));
 });
 
 module.exports = AV.Cloud;
