@@ -22,6 +22,8 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+console.log('instance:', process.env.LC_APP_INSTANCE);
+
 var app = express();
 app.use(sniper({AV: AV}));
 
@@ -84,6 +86,12 @@ app.post('/hello', function(req, res) {
     message: 'hello, ' + req.body.name
   });
 });
+
+app.get('/instance', function(req, res) {
+  // 测试各个节点日志收集的有效性
+  console.log('instance:', process.env.LC_APP_INSTANCE);
+  res.send(process.env.LC_APP_INSTANCE);
+})
 
 app.get('/time', function(req, res) {
   res.send(new Date());
