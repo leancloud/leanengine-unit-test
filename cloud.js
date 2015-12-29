@@ -153,21 +153,16 @@ AV.Cloud.define('login', function(req, res) {
 });
 
 AV.Cloud.beforeSave('TestBiz', function(req, res) {
-  var biz, _ref;
+  var _ref;
   console.log('TestBiz beforeSave');
-  biz = req.object;
+  var biz = req.object;
   if (req.user) {
     biz.set('beforeSaveUsername', req.user.get('username'));
   }
   biz.set('beforeSave', true);
-  if (((_ref = req.user) != null ? _ref.get('username') : void 0) === 'unluckily') {
+  if(req.user && req.user.get('username') === 'unluckily') {
     return res.error();
   }
-  return res.success();
-});
-
-AV.Cloud.beforeSave('TestObject', function(req, res) {
-  console.log('TestObject beforeSave');
   return res.success();
 });
 

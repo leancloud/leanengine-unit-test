@@ -39,7 +39,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.set('trust proxy', 1) // trust first proxy
+app.set('trust proxy', 1); // trust first proxy
  
 app.use(cookieSession({
     name: 'session',
@@ -53,7 +53,12 @@ app.use(AV.Cloud.HttpsRedirect());
 
 // 未处理异常捕获 middleware
 app.use(function(req, res, next) {
-  var d = domain.create();
+  var d = null;
+  if (process.domain) {
+    d = process.domain;
+  } else {
+    d = domain.create();
+  }
   d.add(req);
   d.add(res);
   d.on('error', function(err) {
@@ -91,7 +96,7 @@ app.get('/instance', function(req, res) {
   // 测试各个节点日志收集的有效性
   console.log('instance:', process.env.LC_APP_INSTANCE);
   res.send(process.env.LC_APP_INSTANCE);
-})
+});
 
 app.get('/time', function(req, res) {
   res.send(new Date());
