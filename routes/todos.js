@@ -43,7 +43,7 @@ router.post('/', function(req, res, next) {
     error: function(err) {
       next(err);
     }
-  })
-})
+  });
+});
 
 module.exports = router;
