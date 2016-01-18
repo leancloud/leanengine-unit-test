@@ -20,7 +20,7 @@ if (process.env.NODE_ENV === 'production') {
   client.on('error', function(err) {
     return console.log('redis err: %s', err);
   });
-}
+
 
 console.log('instance:', process.env.LC_APP_INSTANCE);
 
