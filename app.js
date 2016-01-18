@@ -181,6 +181,10 @@ app.get('/throwError', function(req, res) {
   noThisMethod(); // jshint ignore:line
 });
 
+app.get('/host', function(req, res) {
+  res.send(req.get('host'));
+});
+
 app.get('/asyncError', function(req, res) {
   setTimeout(function() {
     return noThisMethod(); // jshint ignore:line
