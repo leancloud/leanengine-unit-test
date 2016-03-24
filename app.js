@@ -15,7 +15,7 @@ var cloud = require('./cloud');
 
 var client;
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.REDIS_URL_test) {
   client = require('redis').createClient(process.env.REDIS_URL_test);
   client.on('error', function(err) {
     return console.log('redis err: %s', err);
