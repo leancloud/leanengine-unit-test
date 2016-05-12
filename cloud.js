@@ -12,6 +12,11 @@ AV.Cloud.define('foo', function(request, response) {
   response.success("bar");
 });
 
+AV.Cloud.define('instance', function(request, response) {
+  console.log('instance:', process.env.LC_APP_INSTANCE);
+  response.success(process.env.LC_APP_INSTANCE);
+})
+
 AV.Cloud.define('choice', function(req, res) {
   if (req.params.choice) {
     res.success('OK~');
