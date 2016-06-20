@@ -98,6 +98,13 @@ app.get('/instance', function(req, res) {
   res.send(process.env.LC_APP_INSTANCE);
 });
 
+app.get('/logTest', function(req, res) {
+  for(var i = 0; i < 1000; i++) {
+    console.log('logTest ...', i);
+  }
+  res.send('ok');
+});
+
 app.get('/time', function(req, res) {
   res.send(new Date());
 });

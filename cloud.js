@@ -350,14 +350,6 @@ AV.Cloud.define('testAVObjectsArrayParams', function(request, response) {
   response.success();
 });
 
-AV.Cloud.define('testUser', function(request, response) {
-  assert.equal(request.user.className, '_User');
-  assert.equal(request.user.id, '54fd6a03e4b06c41e00b1f40');
-  assert.equal(request.user.get('username'), 'admin');
-  assert.equal(request.user, AV.User.current());
-  response.success("ok");
-});
-
 AV.Cloud.define('testRun', function(request, response) {
   AV.Cloud.run('hello', {name: '李四'}, {
     success: function(data) {
