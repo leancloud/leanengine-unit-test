@@ -9,6 +9,6 @@ var server = require('http').createServer(function(req, res) {
 
 setTimeout(function() {
   server.close()
-}, 10000);
+}, 3000);
 
 process.stdin.resume();
