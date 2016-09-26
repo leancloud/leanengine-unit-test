@@ -6,3 +6,5 @@ require('http').createServer(function(req, res) {
 
   res.end();
 }).listen(3000);
+
+console.log(`hello, Node 4.x`);
