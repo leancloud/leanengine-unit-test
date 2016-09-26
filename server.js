@@ -6,3 +6,5 @@ require('http').createServer(function(req, res) {
 
   res.end();
 }).listen(3000);
+
+var [a, , [b], c] = [5, null, [6]];
