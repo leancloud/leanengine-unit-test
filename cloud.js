@@ -451,4 +451,16 @@ AV.Cloud.define("userMatching", function(req, res) {
   }, Math.floor((Math.random() * 500) + 1));
 });
 
+AV.Cloud.beforeSave("HookReliabilityTest", (req, res) => {
+  req.object.set('beforeSave', true);
+  res.success();
+});
+
+AV.Cloud.afterSave("HookReliabilityTest", (req) => {
+  req.object.set('afterSave', true);
+  req.object.save().catch((err) => {
+    console.error('HookReliabilityTest afterSave err:', err);
+  });
+});
+
 module.exports = AV.Cloud;

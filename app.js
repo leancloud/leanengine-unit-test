@@ -8,8 +8,11 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var cookieSession = require('cookie-session');
 var request = require('request');
+var bluebird = require('bluebird');
 var AV = require('leanengine');
 var sniper = require('leanengine-sniper');
+var _ = require('underscore');
+
 var todos = require('./routes/todos');
 var cloud = require('./cloud');
 
@@ -245,6 +248,33 @@ app.post('/callSelf', function(req, res, next) {
       return next(err);
     }
     res.status(response.statusCode).send(body);
+  });
+});
+
+app.post('/hookReliabilityTest', function(req, res, next) {
+  bluebird.map(_.range(req.body.count || 10000), () => {
+    return new AV.Object('HookReliabilityTest').save({ foo: 'bar' })
+  }, { concurrency: 20 }).then(() => {
+    res.send('ok');
+  }).catch((err) => {
+    next(err);
+  });
+});
+
+app.post('/hookReliabilityTest2', function(req, res, next) {
+  bluebird.each(_.range(req.body.times || 10), () => {
+    let i;
+    let objs = [];
+    for(i = 0; i < 200; i++) {
+      let obj = new AV.Object('HookReliabilityTest');
+      obj.set('foo', 'bar');
+      objs.push(obj);
+    }
+    return AV.Object.saveAll(objs);
+  }).then(() => {
+    res.send('ok');
+  }).catch((err) => {
+    next(err);
   });
 });
 
