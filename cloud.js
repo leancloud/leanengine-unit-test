@@ -463,4 +463,42 @@ AV.Cloud.afterSave("HookReliabilityTest", (req) => {
   });
 });
 
+AV.Cloud.beforeSave('IgnoreHookTest', function(request, response) {
+  console.log('IgnoreHookTest', 'beforeSave', request.object.id);
+  request.object.set('byBeforeSave', 1);
+  response.success();
+});
+
+AV.Cloud.afterSave('IgnoreHookTest', function(request) {
+  console.log('IgnoreHookTest', 'afterSave', request.object.id);
+  request.object.set('byAfterSave', 1);
+  request.object.disableBeforeHook();
+  request.object.save().catch(console.error);
+});
+
+AV.Cloud.beforeUpdate('IgnoreHookTest', function(request, response) {
+  console.log('IgnoreHookTest', 'beforeUpdate', request.object.id);
+  request.object.set('byBeforeUpdate', 1);
+  request.object.disableAfterHook();
+  request.object.save().catch(console.error).then(function() {
+    response.success();
+  });
+});
+
+AV.Cloud.afterUpdate('IgnoreHookTest', function(request) {
+  console.log('IgnoreHookTest', 'afterUpdate', request.object.id);
+  request.object.set('byAfterUpdate', 1);
+  request.object.disableBeforeHook();
+  request.object.save().catch(console.error);
+});
+
+AV.Cloud.beforeDelete('IgnoreHookTest', function(request, response) {
+  console.log('IgnoreHookTest', 'beforeDelete', request.object.id);
+  response.error('Error from beforeDelete');
+});
+
+AV.Cloud.afterDelete('IgnoreHookTest', function(request) {
+  console.log('IgnoreHookTest', 'afterDelete', request.object.id);
+});
+
 module.exports = AV.Cloud;
