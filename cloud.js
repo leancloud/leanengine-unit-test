@@ -33,13 +33,6 @@ AV.Cloud.define("testError", function(request, response) {
   return response.error("errorMsg");
 });
 
-AV.Cloud.define('testThrowError', function(request, response) {
-  /* jshint ignore:start */
-  noThisMethod();
-  /* jshint ignore:end */
-  response.success();
-});
-
 AV.Cloud.define('asyncError', function(req, res) {
   setTimeout(function() {
     return noThisMethod(); // jshint ignore:line
@@ -214,10 +207,6 @@ AV.Cloud.beforeDelete('TestBiz', function(req, res) {
     return res.error();
   }
   return res.success();
-});
-
-AV.Cloud.onVerified('sms', function(request) {
-  return console.log("onVerified: sms, user: " + request.object);
 });
 
 AV.Cloud.onLogin(function(request, response) {

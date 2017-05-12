@@ -1,5 +1,4 @@
 'use strict';
-var domain = require('domain');
 var fs = require('fs');
 var assert = require('assert');
 var express = require('express');
@@ -14,7 +13,9 @@ var sniper = require('leanengine-sniper');
 var _ = require('underscore');
 
 var todos = require('./routes/todos');
-var cloud = require('./cloud');
+
+// 加载云函数定义
+require('./cloud');
 
 var client;
 
@@ -35,8 +36,8 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 
-// 加载云代码方法
-app.use(cloud);
+// 加载云引擎中间件
+app.use(AV.express());
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -53,27 +54,6 @@ app.use(cookieSession({
 app.use(AV.Cloud.CookieSession({ secret: 'my secret', maxAge: 3600000, fetchUser: true }));
 
 app.use(AV.Cloud.HttpsRedirect());
-
-// 未处理异常捕获 middleware
-app.use(function(req, res, next) {
-  var d = null;
-  if (process.domain) {
-    d = process.domain;
-  } else {
-    d = domain.create();
-  }
-  d.add(req);
-  d.add(res);
-  d.on('error', function(err) {
-    console.error('uncaughtException url=%s, msg=%s', req.url, err.stack || err.message || err);
-    if(!res.finished) {
-      res.statusCode = 500;
-      res.setHeader('content-type', 'application/json; charset=UTF-8');
-      res.end('uncaughtException');
-    }
-  });
-  d.run(next);
-});
 
 app.get('/', function(req, res) {
   res.render('index', { currentTime: new Date() });
@@ -100,6 +80,10 @@ app.get('/instance', function(req, res) {
   console.log('instance:', process.env.LC_APP_INSTANCE);
   res.send(process.env.LC_APP_INSTANCE);
 });
+
+app.get('/clientRequestHeaders', (req, res) => {
+  res.send(req.headers)
+})
 
 app.get('/logTest', function(req, res) {
   for(var i = 0; i < 1000; i++) {
