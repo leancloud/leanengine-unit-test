@@ -5,7 +5,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var cookieSession = require('cookie-session');
+var session = require('express-session')
 var request = require('request');
 var bluebird = require('bluebird');
 var AV = require('leanengine');
@@ -42,13 +42,15 @@ app.use(AV.express());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.set('trust proxy', 1)
 
-app.set('trust proxy', 1); // trust first proxy
- 
-app.use(cookieSession({
-    name: 'session',
-    keys: ['key1', 'key2']
-}));
+var sess = {
+  secret: 'keyboard cat',
+  resave: false,
+  saveUninitialized: true,
+  cookie: {secure: true}
+}
+app.use(session(sess))
 
 // 加载 cookieSession 以支持 AV.User 的会话状态
 app.use(AV.Cloud.CookieSession({ secret: 'my secret', maxAge: 3600000, fetchUser: true }));
@@ -95,6 +97,20 @@ app.get('/logTest', function(req, res) {
 app.get('/time', function(req, res) {
   res.send(new Date());
 });
+
+app.get('/session', function(req, res, next) {
+  var sess = req.session
+  if (sess.views) {
+    sess.views++
+      res.setHeader('Content-Type', 'text/html')
+      res.write('<p>views: ' + sess.views + '</p>')
+      res.write('<p>expires in: ' + (sess.cookie.maxAge / 1000) + 's</p>')
+      res.end()
+  } else {
+    sess.views = 1
+    res.end('welcome to the session demo. refresh!')
+  }
+})
 
 app.post('/login', function(req, res) {
   AV.User.logIn(req.body.username, req.body.password).then(function() {
@@ -188,11 +204,6 @@ app.get('/asyncError', function(req, res) {
 
 app.get('/staticMiddlewareTest.html', function(req, res) {
   res.send('dynamic resource');
-});
-
-app.get('/session', function(req, res, next) {
-  req.session.views = (req.session.views || 0) + 1;
-  res.end(req.session.views + ' views');
 });
 
 var TestObject = AV.Object.extend('TestObject');
