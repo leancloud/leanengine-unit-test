@@ -52,68 +52,60 @@ AV.Cloud.define("averageStars", function(request, response) {
   var query;
   query = new AV.Query("Review");
   query.equalTo("movie", request.params.movie);
-  return query.find({
-    success: function(results) {
-      var i, sum;
-      sum = 0;
-      i = 0;
-      while (i < results.length) {
-        sum += results[i].get("stars");
-        ++i;
-      }
-      return response.success(sum / results.length);
-    },
-    error: function() {
-      return response.error("movie lookup failed");
+  return query.find().then(function(results) {
+    var i, sum;
+    sum = 0;
+    i = 0;
+    while (i < results.length) {
+      sum += results[i].get("stars");
+      ++i;
     }
+    return response.success(sum / results.length);
+  })
+  .catch(function(err) {
+    return response.error("movie lookup failed");
   });
 });
 
 AV.Cloud.define('averageStars_CQL', function(request, response) {
   var query = "select stars from Review where movie = '" + request.params.movie + "'";
-  AV.Query.doCloudQuery(query, {
-    success: function(results) {
-      results = results.results;
-      var i, sum;
-      sum = 0;
-      i = 0;
-      while (i < results.length) {
-        sum += results[i].get("stars");
-        ++i;
-      }
-      return response.success(sum / results.length);
-    },
-    error: function(err) {
-      return response.error("movie lookup failed:" + err);
+  AV.Query.doCloudQuery(query).then(function(results) {
+    results = results.results;
+    var i, sum;
+    sum = 0;
+    i = 0;
+    while (i < results.length) {
+      sum += results[i].get("stars");
+      ++i;
     }
+    return response.success(sum / results.length);
+  })
+  .catch(function(err) {
+    return response.error("movie lookup failed:" + err);
   });
 });
 
 AV.Cloud.define("getArmor", function(request, response) {
   var query;
   query = new AV.Query("Armor");
-  return query.find({
-    success: function(results) {
-      if (results.length > 0) {
-        return response.success(results[0]);
-      }
-    },
-    error: function() {
-      return response.error("movie lookup failed");
+  return query.find().then(function(results) {
+    if (results.length > 0) {
+      return response.success(results[0]);
     }
+  })
+  .catch(function() {
+    return response.error("movie lookup failed");
   });
 });
 
 AV.Cloud.define("getArmors", function(request, response) {
   var query;
   query = new AV.Query("Armor");
-  return query.find({
-    success: function(results) {
+  return query.find().then(function(results) {
       return response.success(results);
-    },
-    error: function() {
-      return response.error("movie lookup failed");
-    }
+  })
+  .catch(function() {
+    return response.error("movie lookup failed");
   });
 });
 
@@ -122,13 +114,11 @@ AV.Cloud.define("GetSomeArmors", function(request, response) {
   query = new AV.Query("Armor");
   query.limit(1);
   query.skip(request.params.skip);
-  return query.find({
-    success: function(results) {
-      return response.success(results);
-    },
-    error: function() {
-      return response.error("some error happended");
-    }
+  return query.find().then(function(results) {
+    return response.success(results);
+  })
+  .catch(function() {
+    return response.error("some error happended");
   });
 });
 
@@ -140,13 +130,11 @@ AV.Cloud.define('login', function(req, res) {
     err.code = 1234;
     return res.error(err);
   }
-  return AV.User.logIn(username, password, {
-    success: function(user) {
-      return res.success(user);
-    },
-    error: function(user, err) {
-      return res.error(err);
-    }
+  return AV.User.logIn(username, password).then(function(user) {
+    return res.success(user);
+  })
+  .catch(function(err) {
+    return res.error(err);
   });
 });
 
@@ -245,22 +233,16 @@ AV.Cloud.define('status.topic', function(request, response) {
 AV.Cloud.define("getRandomTestItem", function(request, response) {
   var query;
   query = new AV.Query("TestItem");
-  return query.count({
-    success: function(count) {
-      query.skip(Math.round(Math.random() * count));
-      query.limit(1);
-      return query.find({
-        success: function(results) {
-          return response.success(results[0]);
-        },
-        error: function(error) {
-          return response.error("movie lookup failed");
-        }
-      });
-    },
-    error: function(error) {
-      return response.error("movie lookup failed");
-    }
+  return query.count().then(function(count) {
+    query.skip(Math.round(Math.random() * count));
+    query.limit(1);
+    return query.find()
+  })
+  .then(function(results) {
+    return response.success(results[0]);
+  })
+  .catch(function(error) {
+    return response.error("movie lookup failed");
   });
 });
 
@@ -271,20 +253,18 @@ AV.Cloud.define('complexObject', function(request, response) {
   query = new AV.Query(ComplexObject);
   query.include('fileColumn');
   query.ascending('createdAt');
-  query.find({
-    success: function(results) {
-      response.success({
-        foo: 'bar',
-        i: 123,
-        obj: {
-          a: 'b',
-          as: [1, 2, 3]
-        },
-        t: new Date('2015-05-14T09:21:18.273Z'),
-        avObject: results[0],
-        avObjects: results
-      });
-    }
+  query.find().then(function(results) {
+    response.success({
+      foo: 'bar',
+      i: 123,
+      obj: {
+        a: 'b',
+        as: [1, 2, 3]
+      },
+      t: new Date('2015-05-14T09:21:18.273Z'),
+      avObject: results[0],
+      avObjects: results
+    });
   });
 });
 
@@ -293,10 +273,8 @@ AV.Cloud.define('bareAVObject', function(request, response) {
   query = new AV.Query(ComplexObject);
   query.include('fileColumn');
   query.ascending('createdAt');
-  query.find({
-    success: function(results) {
-      response.success(results[0]);
-    }
+  query.find().then(function(results) {
+    response.success(results[0]);
   });
 });
 
@@ -305,10 +283,8 @@ AV.Cloud.define('AVObjects', function(request, response) {
   query = new AV.Query(ComplexObject);
   query.include('fileColumn');
   query.ascending('createdAt');
-  query.find({
-    success: function(results) {
-      response.success(results);
-    }
+  query.find().then(function(results) {
+    response.success(results);
   });
 });
 
@@ -340,31 +316,27 @@ AV.Cloud.define('testAVObjectsArrayParams', function(request, response) {
 });
 
 AV.Cloud.define('testRun', function(request, response) {
-  AV.Cloud.run('hello', {name: '李四'}, {
-    success: function(data) {
-      assert.deepEqual(data, {action: "hello", name: '李四'});
-      response.success();
-    }
+  AV.Cloud.run('hello', {name: '李四'}).then(function(data) {
+    assert.deepEqual(data, {action: "hello", name: '李四'});
+    response.success();
   });
 });
 
 AV.Cloud.define('testRun_options_callback', function(request, response) {
-  AV.Cloud.run('choice', {choice: true}, {
-    success: function(data) {
-      assert.equal('OK~', data);
-      AV.Cloud.run('choice', {choice: false}, {
-        success: function(data) {
-          assert.ifError(data);
-        },
-        error: function(err) {
-          assert.equal('OMG...', err);
-          response.success();
-        }
-      });
-    },
-    error: function(err) {
-      assert.ifError(err);
-    }
+  AV.Cloud.run('choice', {choice: true}).then(function(data) {
+    assert.equal('OK~', data);
+    AV.Cloud.run('choice', {choice: false}, {
+      success: function(data) {
+        assert.ifError(data);
+      },
+      error: function(err) {
+        assert.equal('OMG...', err);
+        response.success();
+      }
+    });
+  })
+  .catch(function(err) {
+    assert.ifError(err);
   });
 });
 
@@ -384,19 +356,15 @@ AV.Cloud.define('testRun_promise', function(request, response) {
 });
 
 AV.Cloud.define('testRunWithUser', function(request, response) {
-  AV.Cloud.run('testUser', {}, {
-    success: function(data) {
-      assert.equal('ok', data);
-      response.success();
-    }
+  AV.Cloud.run('testUser', {}).then(function(data) {
+    assert.equal('ok', data);
+    response.success();
   });
 });
 
 AV.Cloud.define('testRunWithAVObject', function(request, response) {
- AV.Cloud.run('complexObject', {}, {
-   success: function(datas) {
-     response.success(datas);
-   }
+ AV.Cloud.run('complexObject', {}).then(function(datas) {
+   response.success(datas);
  });
 });
 
@@ -424,18 +392,16 @@ AV.Cloud.define("userMatching", function(req, res) {
   setTimeout(function() {
     // 为了更加靠谱的验证串号问题，走一次网络 IO
     var query = new AV.Query('TestObject');
-    query.get('55069f5be4b0c93838ed9b17', {
-      success: function(obj) {
-        assert.equal(req.user, AV.User.current());
-        if(req.params.assertName) {
-          assert.equal(req.params.assertName, req.user.get('username'));
-        } else {
-          assert.equal(req.user, null);
-          assert.equal(AV.User.current(), null);
-        }
-        assert.equal(obj.get('foo'), 'bar');
-        res.success({reqUser: req.user, currentUser: AV.User.current()});
+    query.get('55069f5be4b0c93838ed9b17').then(function(obj) {
+      assert.equal(req.user, AV.User.current());
+      if(req.params.assertName) {
+        assert.equal(req.params.assertName, req.user.get('username'));
+      } else {
+        assert.equal(req.user, null);
+        assert.equal(AV.User.current(), null);
       }
+      assert.equal(obj.get('foo'), 'bar');
+      res.success({reqUser: req.user, currentUser: AV.User.current()});
     });
   }, Math.floor((Math.random() * 500) + 1));
 });
