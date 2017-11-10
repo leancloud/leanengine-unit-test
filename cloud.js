@@ -1,21 +1,21 @@
 'use strict';
 var assert = require('assert');
 var AV = require('leanengine');
-var should = require('should');
+require('should');
 
 AV.Cloud.define('hello', function(request, response) {
-  response.success({action: "hello", name: request.params.name});
+  response.success({action: 'hello', name: request.params.name});
 });
 
 AV.Cloud.define('foo', function(request, response) {
   assert.ok(request.meta.remoteAddress);
-  response.success("bar");
+  response.success('bar');
 });
 
 AV.Cloud.define('instance', function(request, response) {
   console.log('instance:', process.env.LC_APP_INSTANCE);
   response.success(process.env.LC_APP_INSTANCE);
-})
+});
 
 AV.Cloud.define('choice', function(req, res) {
   if (req.params.choice) {
@@ -25,17 +25,17 @@ AV.Cloud.define('choice', function(req, res) {
   }
 });
 
-AV.Cloud.define("testSuccess", function(request, response) {
+AV.Cloud.define('testSuccess', function(request, response) {
   return response.success();
 });
 
-AV.Cloud.define("testError", function(request, response) {
-  return response.error("errorMsg");
+AV.Cloud.define('testError', function(request, response) {
+  return response.error('errorMsg');
 });
 
 AV.Cloud.define('asyncError', function(req, res) {
   setTimeout(function() {
-    return noThisMethod(); // jshint ignore:line
+    return noThisMethod(); // eslint-disable-line
   }, 2000);
   return res.success();
 });
@@ -44,81 +44,80 @@ AV.Cloud.define('testUser', function(req, res) {
   return res.success(req.user);
 });
 
-AV.Cloud.define("time", function(request, response) {
+AV.Cloud.define('time', function(request, response) {
   return response.success(new Date());
 });
 
-AV.Cloud.define("averageStars", function(request, response) {
+AV.Cloud.define('averageStars', function(request, response) {
   var query;
-  query = new AV.Query("Review");
-  query.equalTo("movie", request.params.movie);
+  query = new AV.Query('Review');
+  query.equalTo('movie', request.params.movie);
   return query.find().then(function(results) {
     var i, sum;
     sum = 0;
     i = 0;
     while (i < results.length) {
-      sum += results[i].get("stars");
+      sum += results[i].get('stars');
       ++i;
     }
     return response.success(sum / results.length);
   })
-  .catch(function(err) {
-    return response.error("movie lookup failed");
+  .catch(function(_err) {
+    return response.error('movie lookup failed');
   });
 });
 
 AV.Cloud.define('averageStars_CQL', function(request, response) {
-  var query = "select stars from Review where movie = '" + request.params.movie + "'";
-  AV.Query.doCloudQuery(query).then(function(results) {
+  AV.Query.doCloudQuery('select stars from Review where movie = ?', [request.params.movie]).then(function(results) {
     results = results.results;
     var i, sum;
     sum = 0;
     i = 0;
     while (i < results.length) {
-      sum += results[i].get("stars");
+      sum += results[i].get('stars');
       ++i;
     }
     return response.success(sum / results.length);
   })
   .catch(function(err) {
-    return response.error("movie lookup failed:" + err);
+    return response.error('movie lookup failed:' + err);
   });
 });
 
-AV.Cloud.define("getArmor", function(request, response) {
+AV.Cloud.define('getArmor', function(request, response) {
   var query;
-  query = new AV.Query("Armor");
+  query = new AV.Query('Armor');
   return query.find().then(function(results) {
     if (results.length > 0) {
       return response.success(results[0]);
     }
   })
   .catch(function() {
-    return response.error("movie lookup failed");
+    return response.error('movie lookup failed');
   });
 });
 
-AV.Cloud.define("getArmors", function(request, response) {
+AV.Cloud.define('getArmors', function(request, response) {
   var query;
-  query = new AV.Query("Armor");
+  query = new AV.Query('Armor');
   return query.find().then(function(results) {
-      return response.success(results);
+    return response.success(results);
   })
   .catch(function() {
-    return response.error("movie lookup failed");
+    return response.error('movie lookup failed');
   });
 });
 
-AV.Cloud.define("GetSomeArmors", function(request, response) {
+AV.Cloud.define('GetSomeArmors', function(request, response) {
   var query;
-  query = new AV.Query("Armor");
+  query = new AV.Query('Armor');
   query.limit(1);
   query.skip(request.params.skip);
   return query.find().then(function(results) {
     return response.success(results);
   })
   .catch(function() {
-    return response.error("some error happended");
+    return response.error('some error happended');
   });
 });
 
@@ -139,7 +138,6 @@ AV.Cloud.define('login', function(req, res) {
 });
 
 AV.Cloud.beforeSave('TestBiz', function(req, res) {
-  var _ref;
   console.log('TestBiz beforeSave');
   var biz = req.object;
   if (req.user) {
@@ -156,7 +154,6 @@ AV.Cloud.afterSave('TestBiz', function(req) {
   var biz, currentUser;
   console.log('TestBiz afterSave');
   biz = req.object;
-  console.log('>>', biz);
   if (req.user) {
     biz.set('afterSaveUsername', req.user.get('username'));
   }
@@ -164,11 +161,9 @@ AV.Cloud.afterSave('TestBiz', function(req) {
   currentUser = AV.User.current();
   console.log('currentUser:', currentUser);
   console.log('req.user:', req.user);
-  return biz.save({
-    error: function(obj, err) {
-      console.log(err);
-      return assert.ifError(err);
-    }
+  return biz.save().catch((err) => {
+    console.log(err);
+    return assert.ifError(err);
   });
 });
 
@@ -180,11 +175,9 @@ AV.Cloud.afterUpdate('TestBiz', function(req) {
     biz.set('afterUpdateUsername', req.user.get('username'));
   }
   biz.set('afterUpdate', true);
-  return biz.save({
-    error: function(obj, err) {
-      console.log(err);
-      return assert.ifError(err);
-    }
+  return biz.save().catch((err) => {
+    console.log(err);
+    return assert.ifError(err);
   });
 });
 
@@ -198,7 +191,7 @@ AV.Cloud.beforeDelete('TestBiz', function(req, res) {
 });
 
 AV.Cloud.onLogin(function(request, response) {
-  console.log("on login:", request.object);
+  console.log('on login:', request.object);
   if (request.object.get('username') === 'noLogin') {
     return response.error('Forbidden');
   } else {
@@ -218,11 +211,9 @@ AV.Cloud.afterDelete('TestBiz', function(req) {
     deleteBiz.set('afterDeleteUsername', req.user.get('username'));
   }
   deleteBiz.set('afterDelete', true);
-  return deleteBiz.save({
-    error: function(obj, err) {
-      console.log(err);
-      return assert.ifError(err);
-    }
+  return deleteBiz.save().catch((err) => {
+    console.log(err);
+    return assert.ifError(err);
   });
 });
 
@@ -230,19 +221,19 @@ AV.Cloud.define('status.topic', function(request, response) {
   return response.success('Hello world!');
 });
 
-AV.Cloud.define("getRandomTestItem", function(request, response) {
+AV.Cloud.define('getRandomTestItem', function(request, response) {
   var query;
-  query = new AV.Query("TestItem");
+  query = new AV.Query('TestItem');
   return query.count().then(function(count) {
     query.skip(Math.round(Math.random() * count));
     query.limit(1);
-    return query.find()
+    return query.find();
   })
   .then(function(results) {
     return response.success(results[0]);
   })
-  .catch(function(error) {
-    return response.error("movie lookup failed");
+  .catch(function(_error) {
+    return response.error('movie lookup failed');
   });
 });
 
@@ -289,35 +280,35 @@ AV.Cloud.define('AVObjects', function(request, response) {
 });
 
 AV.Cloud.define('testAVObjectParams', function(request, response) {
-  request.params.avObject.should.be["instanceof"](AV.Object);
+  request.params.avObject.should.be['instanceof'](AV.Object);
   request.params.avObject.get('name').should.be.equal('avObject');
-  request.params.avObject.get('pointerColumn').should.be["instanceof"](AV.User);
-  request.params.avFile.should.be["instanceof"](AV.File);
+  request.params.avObject.get('pointerColumn').should.be['instanceof'](AV.User);
+  request.params.avFile.should.be['instanceof'](AV.File);
   request.params.avObjects.forEach(function(object) {
-    object.should.be["instanceof"](AV.Object);
+    object.should.be['instanceof'](AV.Object);
     object.get('name').should.be.equal('avObjects');
   });
   response.success();
 });
 
 AV.Cloud.define('testBareAVObjectParams', function(request, response) {
-  request.params.should.be["instanceof"](AV.Object);
+  request.params.should.be['instanceof'](AV.Object);
   request.params.get('name').should.be.equal('avObject');
-  request.params.get('avFile').should.be["instanceof"](AV.File);
+  request.params.get('avFile').should.be['instanceof'](AV.File);
   response.success();
 });
 
 AV.Cloud.define('testAVObjectsArrayParams', function(request, response) {
   request.params.forEach(function(object) {
     object.get('name').should.be.equal('avObject');
-    object.get('avFile').should.be["instanceof"](AV.File);
+    object.get('avFile').should.be['instanceof'](AV.File);
   });
   response.success();
 });
 
 AV.Cloud.define('testRun', function(request, response) {
   AV.Cloud.run('hello', {name: '李四'}).then(function(data) {
-    assert.deepEqual(data, {action: "hello", name: '李四'});
+    assert.deepEqual(data, {action: 'hello', name: '李四'});
     response.success();
   });
 });
@@ -363,9 +354,9 @@ AV.Cloud.define('testRunWithUser', function(request, response) {
 });
 
 AV.Cloud.define('testRunWithAVObject', function(request, response) {
- AV.Cloud.run('complexObject', {}).then(function(datas) {
-   response.success(datas);
- });
+  AV.Cloud.run('complexObject', {}).then(function(datas) {
+    response.success(datas);
+  });
 });
 
 AV.Cloud.onVerified('sms', function(request) {
@@ -374,44 +365,30 @@ AV.Cloud.onVerified('sms', function(request) {
   assert.equal(request.object.get('username'), 'admin');
 });
 
+AV.Cloud.define('requestPasswordResetBySmsCode', function (request, response) {
+  var phone = request.params.phone;
+  if(!phone){
+    return response.error('phone 不能为空');
+  }
+  AV.User.requestPasswordResetBySmsCode(phone,{useMasterKey: true})
+  .then(function (success) {
+    return response.success(success);
+  }, function (error) {
+    return response.error(error);
+  });
+});
+
 AV.Cloud.define('testThrowError', function(request, response) {
-  /* jshint ignore:start */
-  noThisMethod();
-  /* jshint ignore:end */
+  noThisMethod(); // eslint-disable-line
   response.success();
 });
 
-AV.Cloud.define("userMatching", function(req, res) {
-  assert.equal(req.user, AV.User.current());
-  if(req.params.assertName) {
-    assert.equal(req.params.assertName, req.user.get('username'));
-  } else {
-    assert.equal(req.user, null);
-    assert.equal(AV.User.current(), null);
-  }
-  setTimeout(function() {
-    // 为了更加靠谱的验证串号问题，走一次网络 IO
-    var query = new AV.Query('TestObject');
-    query.get('55069f5be4b0c93838ed9b17').then(function(obj) {
-      assert.equal(req.user, AV.User.current());
-      if(req.params.assertName) {
-        assert.equal(req.params.assertName, req.user.get('username'));
-      } else {
-        assert.equal(req.user, null);
-        assert.equal(AV.User.current(), null);
-      }
-      assert.equal(obj.get('foo'), 'bar');
-      res.success({reqUser: req.user, currentUser: AV.User.current()});
-    });
-  }, Math.floor((Math.random() * 500) + 1));
-});
-
-AV.Cloud.beforeSave("HookReliabilityTest", (req, res) => {
+AV.Cloud.beforeSave('HookReliabilityTest', (req, res) => {
   req.object.set('beforeSave', true);
   res.success();
 });
 
-AV.Cloud.afterSave("HookReliabilityTest", (req) => {
+AV.Cloud.afterSave('HookReliabilityTest', (req) => {
   req.object.set('afterSave', true);
   req.object.save().catch((err) => {
     console.error('HookReliabilityTest afterSave err:', err);

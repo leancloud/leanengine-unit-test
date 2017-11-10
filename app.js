@@ -1,30 +1,18 @@
-'use strict';
 var fs = require('fs');
-var assert = require('assert');
 var express = require('express');
+var timeout = require('connect-timeout');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var session = require('express-session')
+var session = require('express-session');
 var request = require('request');
 var bluebird = require('bluebird');
 var AV = require('leanengine');
 var sniper = require('leanengine-sniper');
 var _ = require('underscore');
 
-var todos = require('./routes/todos');
-
 // 加载云函数定义
 require('./cloud');
-
-var client;
-
-if (process.env.REDIS_URL_test) {
-  client = require('redis').createClient(process.env.REDIS_URL_test);
-  client.on('error', function(err) {
-    return console.log('redis err: %s', err);
-  });
-}
 
 console.log('instance:', process.env.LC_APP_INSTANCE);
 
@@ -35,34 +23,38 @@ app.use(sniper({AV: AV}));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
+// 设置默认超时时间
+app.use(timeout('15s'));
 
 // 加载云引擎中间件
 app.use(AV.express());
 
+app.enable('trust proxy');
+// 需要重定向到 HTTPS 可去除下一行的注释。
+app.use(AV.Cloud.HttpsRedirect());
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.set('trust proxy', 1)
 
 var sess = {
   secret: 'keyboard cat',
   resave: false,
   saveUninitialized: true,
   cookie: {secure: true}
-}
-app.use(session(sess))
+};
+app.use(session(sess));
 
 // 加载 cookieSession 以支持 AV.User 的会话状态
 app.use(AV.Cloud.CookieSession({ secret: 'my secret', maxAge: 3600000, fetchUser: true }));
-
-app.use(AV.Cloud.HttpsRedirect());
 
 app.get('/', function(req, res) {
   res.render('index', { currentTime: new Date() });
 });
 
 // 可以将一类的路由单独保存在一个文件中
-app.use('/todos', todos);
+app.use('/todos', require('./routes/todos'));
+app.use('/redis', require('./routes/redis'));
 
 // ejs 模版渲染
 app.get('/hello', function(req, res) {
@@ -84,8 +76,8 @@ app.get('/instance', function(req, res) {
 });
 
 app.get('/clientRequestHeaders', (req, res) => {
-  res.send(req.headers)
-})
+  res.send(req.headers);
+});
 
 app.get('/logTest', function(req, res) {
   for(var i = 0; i < 1000; i++) {
@@ -98,61 +90,48 @@ app.get('/time', function(req, res) {
   res.send(new Date());
 });
 
-app.get('/session', function(req, res, next) {
-  var sess = req.session
+app.get('/session', function(req, res) {
+  var sess = req.session;
   if (sess.views) {
-    sess.views++
-      res.setHeader('Content-Type', 'text/html')
-      res.write('<p>views: ' + sess.views + '</p>')
-      res.write('<p>expires in: ' + (sess.cookie.maxAge / 1000) + 's</p>')
-      res.end()
+    sess.views++;
+    res.setHeader('Content-Type', 'text/html');
+    res.write('<p>views: ' + sess.views + '</p>');
+    res.write('<p>expires in: ' + (sess.cookie.maxAge / 1000) + 's</p>');
+    res.end();
   } else {
-    sess.views = 1
-    res.end('welcome to the session demo. refresh!')
+    sess.views = 1;
+    res.end('welcome to the session demo. refresh!');
   }
-})
+});
 
+// 处理登录请求（可能来自登录界面中的表单）
 app.post('/login', function(req, res) {
-  AV.User.logIn(req.body.username, req.body.password).then(function() {
-    res.redirect('/profile');
-  }, function(error) {
-    res.status = 500;
-    res.send(error);
+  AV.User.logIn(req.body.username, req.body.password).then(function(user) {
+    res.saveCurrentUser(user); // 保存当前用户到 Cookie
+    res.redirect('/profile'); // 跳转到个人资料页面
+  }, function(_error) {
+    //登录失败，跳转到登录页面
+    res.redirect('/login');
   });
 });
 
-app.get('/logout', function(req, res) {
-  AV.User.logOut();
-  res.redirect('/profile');
-});
-
+// 查看个人资料
 app.get('/profile', function(req, res) {
-  if (req.AV.user) {
-    res.send(req.AV.user);
+  // 判断用户是否已经登录
+  if (req.currentUser) {
+    // 如果已经登录，发送当前登录用户信息。
+    res.send(req.currentUser);
   } else {
-    res.send({});
+    // 没有登录，跳转到登录页面。
+    res.redirect('/login');
   }
 });
 
-app.post('/testCookieSession', function(req, res) {
-  AV.User.logIn(req.body.username, req.body.password).then(function(user) {
-    assert.equal(req.body.username, user.get('username'));
-    assert.equal(AV.User.current(), user);
-    AV.User.logOut();
-    assert(!AV.User.current());
-    // 登出再登入不会有问题
-    return AV.User.logIn(req.body.username, req.body.password);
-  }).then(function(user) {
-    assert.equal(AV.User.current(), user);
-    // 在已登录状态，直接用另外一个账户登录
-    return AV.User.logIn('zhangsan', 'zhangsan');
-  }).then(function(user) {
-    assert.equal('zhangsan', user.get('username'));
-    assert.equal(AV.User.current(), user);
-    res.send('ok');
-  }, function(err) {
-    assert.ifError(err);
-  });
+// 登出账号
+app.get('/logout', function(req, res) {
+  req.currentUser.logOut();
+  res.clearCurrentUser(); // 从 Cookie 中删除用户
+  res.redirect('/profile');
 });
 
 app.get('/sources', function(req, res) {
@@ -168,27 +147,20 @@ app.get('/path', function(req, res) {
   });
 });
 
-app.get('/runCool', function(req, res) {
-  AV.Cloud.run('cool', {
+app.get('/runHello', function(req, res) {
+  AV.Cloud.run('hello', {
     name: 'dennis'
-  }, {
-    success: function(result) {
-      res.send(result);
-    },
-    error: function(err) {
-      res.send(err);
-    }
+  })
+  .then((result) => {
+    res.send(result);
+  })
+  .catch((err) => {
+    res.send(err);
   });
 });
 
-app.get('/redis/info', function(req, res, next) {
-  return client.info(function(err, data) {
-    return res.send(data);
-  });
-});
-
-app.get('/throwError', function(req, res) {
-  noThisMethod(); // jshint ignore:line
+app.get('/throwError', function() {
+  noThisMethod(); // eslint-disable-line
 });
 
 app.get('/host', function(req, res) {
@@ -197,35 +169,13 @@ app.get('/host', function(req, res) {
 
 app.get('/asyncError', function(req, res) {
   setTimeout(function() {
-    return noThisMethod(); // jshint ignore:line
+    return noThisMethod(); // eslint-disable-line
   }, 2000);
   return res.send('ok');
 });
 
 app.get('/staticMiddlewareTest.html', function(req, res) {
   res.send('dynamic resource');
-});
-
-var TestObject = AV.Object.extend('TestObject');
-app.get('/userMatching', function(req, res) {
-  setTimeout((function() {
-    var query;
-    query = new AV.Query(TestObject);
-    query.get('54b625b7e4b020bb5129fe04', {
-      success: function(obj) {
-        res.send({
-          reqUser: req.AV.user,
-          currentUser: AV.User.current()
-        });
-      },
-      error: function(err) {
-        res.success({
-          reqUser: req.user,
-          currentUser: AV.User.current()
-        });
-      }
-    });
-  }), Math.floor(Math.random() * 2000 + 1));
 });
 
 app.post('/callSelf', function(req, res, next) {
@@ -248,7 +198,7 @@ app.post('/callSelf', function(req, res, next) {
 
 app.post('/hookReliabilityTest', function(req, res, next) {
   bluebird.map(_.range(req.body.count || 10000), () => {
-    return new AV.Object('HookReliabilityTest').save({ foo: 'bar' })
+    return new AV.Object('HookReliabilityTest').save({ foo: 'bar' });
   }, { concurrency: 20 }).then(() => {
     res.send('ok');
   }).catch((err) => {
@@ -285,7 +235,7 @@ app.use(function(req, res, next) {
 
 // 如果是开发环境，则将异常堆栈输出到页面，方便开发调试
 if (app.get('env') === 'development') {
-  app.use(function(err, req, res, next) { // jshint ignore:line
+  app.use(function(err, req, res, _next) {
     var statusCode = err.status || 500;
     if(statusCode === 500) {
       console.error(err.stack || err);
@@ -299,7 +249,7 @@ if (app.get('env') === 'development') {
 }
 
 // 如果是非开发环境，则页面只输出简单的错误信息
-app.use(function(err, req, res, next) { // jshint ignore:line
+app.use(function(err, req, res, _next) {
   res.status(err.status || 500);
   res.render('error', {
     message: err.message || err,
