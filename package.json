@@ -17,7 +17,7 @@
     "express-session": "^1.15.4",
     "leancloud-storage": "^3.3.1",
     "leanengine": "^3.0.2",
-    "leanengine-sniper": "^0.3.2",
+    "leanengine-apm": "^0.5.0",
     "redis": "^2.3.0",
     "request": "^2.65.0",
     "should": "^7.1.1",

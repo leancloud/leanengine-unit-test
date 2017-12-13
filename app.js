@@ -8,7 +8,7 @@ var session = require('express-session');
 var request = require('request');
 var bluebird = require('bluebird');
 var AV = require('leanengine');
-var sniper = require('leanengine-sniper');
+var apm = require('leanengine-apm');
 var _ = require('underscore');
 
 // 加载云函数定义
@@ -16,8 +16,10 @@ require('./cloud');
 
 console.log('instance:', process.env.LC_APP_INSTANCE);
 
+apm.init(process.env.LEANENGINE_APM_TOKEN);
+
 var app = express();
-app.use(sniper({AV: AV}));
+app.use(require('leanengine-apm').express());
 
 // 设置 view 引擎
 app.set('views', path.join(__dirname, 'views'));
@@ -151,12 +153,12 @@ app.get('/runHello', function(req, res) {
   AV.Cloud.run('hello', {
     name: 'dennis'
   })
-  .then((result) => {
-    res.send(result);
-  })
-  .catch((err) => {
-    res.send(err);
-  });
+    .then((result) => {
+      res.send(result);
+    })
+    .catch((err) => {
+      res.send(err);
+    });
 });
 
 app.get('/throwError', function() {
