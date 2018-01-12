@@ -3,13 +3,16 @@ var assert = require('assert');
 var AV = require('leanengine');
 require('should');
 
+AV.Cloud.define('foo', function(request, response) {
+  response.success('bar');
+});
+
 AV.Cloud.define('hello', function(request, response) {
   response.success({action: 'hello', name: request.params.name});
 });
 
-AV.Cloud.define('foo', function(request, response) {
-  assert.ok(request.meta.remoteAddress);
-  response.success('bar');
+AV.Cloud.define('remoteAddress', (req) => {
+  return req.meta.remoteAddress;
 });
 
 AV.Cloud.define('instance', function(request, response) {

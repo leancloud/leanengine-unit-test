@@ -24,8 +24,9 @@
     "underscore": "^1.8.3"
   },
   "devDependencies": {
+    "ip": "^1.1.5",
     "nodemon": "^1.11.0",
-    "supertest": "^1.1.0"
+    "supertest": "^3.0.0"
   },
   "engines": {
     "node": "6.x"
