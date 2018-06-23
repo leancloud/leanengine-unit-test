@@ -14,7 +14,7 @@ var app = require('./app');
 // LeanEngine 运行时会分配端口并赋值到该变量。
 var PORT = parseInt(process.env.LEANCLOUD_APP_PORT || process.env.PORT || 3000);
 
-app.listen(PORT, function (err) {
+const server = app.listen(PORT, function (err) {
   if (err) {
     console.error(`Node app listen port ${PORT} err:`, err);
     return;
@@ -30,3 +30,22 @@ app.listen(PORT, function (err) {
     console.error('Unhandled Rejection at: Promise ', p, ' reason: ', reason.stack);
   });
 });
+
+const nodeDiscovery = require('./node-discovery');
+const cpuBurner = require('./cpu-burner');
+const redis = require('./redis');
+
+const cpuUsageMock = require('./multi-nodes-cpuusage-mock');
+
+const exitHandler = () => {
+  server.close();
+
+  cpuUsageMock.exit();
+
+  nodeDiscovery.exit();
+  cpuBurner.exit();
+  redis.exit();
+};
+
+process.on('SIGTERM', exitHandler);
+process.on('SIGINT', exitHandler);

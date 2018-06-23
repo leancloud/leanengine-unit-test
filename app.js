@@ -7,8 +7,10 @@ var bodyParser = require('body-parser');
 var session = require('express-session');
 var request = require('request');
 var bluebird = require('bluebird');
+const cpuUsageMock = require('./multi-nodes-cpuusage-mock');
+
 var AV = require('leanengine');
-var apm = require('leanengine-apm');
+//var apm = require('leanengine-apm');
 var _ = require('underscore');
 
 // 加载云函数定义
@@ -16,10 +18,10 @@ require('./cloud');
 
 console.log('instance:', process.env.LC_APP_INSTANCE);
 
-apm.init(process.env.LEANENGINE_APM_TOKEN);
+//apm.init(process.env.LEANENGINE_APM_TOKEN);
 
 var app = express();
-app.use(require('leanengine-apm').express());
+//app.use(require('leanengine-apm').express());
 
 // 设置 view 引擎
 app.set('views', path.join(__dirname, 'views'));
@@ -223,6 +225,11 @@ app.post('/hookReliabilityTest2', function(req, res, next) {
   }).catch((err) => {
     next(err);
   });
+});
+
+app.post('/multi-nodes-cpuusage-mock', (req, res) => {
+  cpuUsageMock.setMaxCpuUsage(req.body.percentage);
+  res.send('OK');
 });
 
 // 如果任何路由都没匹配到，则认为 404

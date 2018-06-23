@@ -1,8 +1,9 @@
 module.exports = {
     "env": {
+        "browser": true,
+        "commonjs": true,
         "es6": true,
-        "node": true,
-        "mocha": true
+        "node": true
     },
     "extends": "eslint:recommended",
     "rules": {
@@ -23,6 +24,6 @@ module.exports = {
             "always"
         ],
         "no-console": 0,
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     }
 };
