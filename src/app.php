@@ -34,6 +34,8 @@ Client::useProduction((getenv("LEANCLOUD_APP_ENV") === "production") ? true : fa
 SlimEngine::enableHttpsRedirect();
 $app->add(new SlimEngine());
 
+$algorithms = mcrypt_list_algorithms();
+
 // 使用 Slim/PHP-View 作为模版引擎
 $container = $app->getContainer();
 $container["view"] = function($container) {
@@ -78,4 +80,3 @@ $app->get('/hello/{name}', function (Request $request, Response $response) {
 });
 
 $app->run();
-
