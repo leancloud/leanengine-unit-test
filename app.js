@@ -7,7 +7,6 @@ var bodyParser = require('body-parser');
 var session = require('express-session');
 var request = require('request');
 var bluebird = require('bluebird');
-const cpuUsageMock = require('./multi-nodes-cpuusage-mock');
 
 var AV = require('leanengine');
 //var apm = require('leanengine-apm');
@@ -17,6 +16,8 @@ var _ = require('underscore');
 require('./cloud');
 
 console.log('instance:', process.env.LC_APP_INSTANCE);
+
+require('./multi-nodes-cpuusage-mock');
 
 //apm.init(process.env.LEANENGINE_APM_TOKEN);
 
@@ -225,11 +226,6 @@ app.post('/hookReliabilityTest2', function(req, res, next) {
   }).catch((err) => {
     next(err);
   });
-});
-
-app.post('/multi-nodes-cpuusage-mock', (req, res) => {
-  cpuUsageMock.setMaxCpuUsage(req.body.percentage);
-  res.send('OK');
 });
 
 // 如果任何路由都没匹配到，则认为 404

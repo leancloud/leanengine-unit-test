@@ -9,12 +9,7 @@ const nodeDiscovery = require('./node-discovery');
 const cpuBurner = require('./cpu-burner');
 
 let timeoutId;
-let currentPercentage = 10;
-
-exports.setMaxCpuUsage = (percentage) => {
-  debug('Set max cpuUsage: %d %', percentage);
-  currentPercentage = percentage;
-};
+let currentPercentage = parseInt(process.env.CPU_BURN_PERCENT) || 10;
 
 // 每分钟执行一次，将 CPU 使用率画成一个正弦曲线
 const asyncLoop = () => {
