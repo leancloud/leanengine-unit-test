@@ -31,19 +31,10 @@ const server = app.listen(PORT, function (err) {
   });
 });
 
-const nodeDiscovery = require('./node-discovery');
-const cpuBurner = require('./cpu-burner');
 const redis = require('./redis');
-
-const cpuUsageMock = require('./multi-nodes-cpuusage-mock');
 
 const exitHandler = () => {
   server.close();
-
-  cpuUsageMock.exit();
-
-  nodeDiscovery.exit();
-  cpuBurner.exit();
   redis.exit();
 };
 

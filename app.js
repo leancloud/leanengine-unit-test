@@ -12,12 +12,9 @@ var AV = require('leanengine');
 //var apm = require('leanengine-apm');
 var _ = require('underscore');
 
-// 加载云函数定义
-require('./cloud');
+const {fibonacci} = require('./cloud');
 
 console.log('instance:', process.env.LC_APP_INSTANCE);
-
-require('./multi-nodes-cpuusage-mock');
 
 //apm.init(process.env.LEANENGINE_APM_TOKEN);
 
@@ -226,6 +223,10 @@ app.post('/hookReliabilityTest2', function(req, res, next) {
   }).catch((err) => {
     next(err);
   });
+});
+
+app.get('/fibonacci', (req, res) => {
+  res.send('' + fibonacci(req.query.num || 10));
 });
 
 // 如果任何路由都没匹配到，则认为 404

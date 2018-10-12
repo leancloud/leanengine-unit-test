@@ -65,9 +65,9 @@ AV.Cloud.define('averageStars', function(request, response) {
     }
     return response.success(sum / results.length);
   })
-  .catch(function(_err) {
-    return response.error('movie lookup failed');
-  });
+    .catch(function(_err) {
+      return response.error('movie lookup failed');
+    });
 });
 
 AV.Cloud.define('averageStars_CQL', function(request, response) {
@@ -82,9 +82,9 @@ AV.Cloud.define('averageStars_CQL', function(request, response) {
     }
     return response.success(sum / results.length);
   })
-  .catch(function(err) {
-    return response.error('movie lookup failed:' + err);
-  });
+    .catch(function(err) {
+      return response.error('movie lookup failed:' + err);
+    });
 });
 
 AV.Cloud.define('getArmor', function(request, response) {
@@ -95,9 +95,9 @@ AV.Cloud.define('getArmor', function(request, response) {
       return response.success(results[0]);
     }
   })
-  .catch(function() {
-    return response.error('movie lookup failed');
-  });
+    .catch(function() {
+      return response.error('movie lookup failed');
+    });
 });
 
 AV.Cloud.define('getArmors', function(request, response) {
@@ -106,9 +106,9 @@ AV.Cloud.define('getArmors', function(request, response) {
   return query.find().then(function(results) {
     return response.success(results);
   })
-  .catch(function() {
-    return response.error('movie lookup failed');
-  });
+    .catch(function() {
+      return response.error('movie lookup failed');
+    });
 });
 
 AV.Cloud.define('GetSomeArmors', function(request, response) {
@@ -119,9 +119,9 @@ AV.Cloud.define('GetSomeArmors', function(request, response) {
   return query.find().then(function(results) {
     return response.success(results);
   })
-  .catch(function() {
-    return response.error('some error happended');
-  });
+    .catch(function() {
+      return response.error('some error happended');
+    });
 });
 
 AV.Cloud.define('login', function(req, res) {
@@ -135,9 +135,9 @@ AV.Cloud.define('login', function(req, res) {
   return AV.User.logIn(username, password).then(function(user) {
     return res.success(user);
   })
-  .catch(function(err) {
-    return res.error(err);
-  });
+    .catch(function(err) {
+      return res.error(err);
+    });
 });
 
 AV.Cloud.beforeSave('TestBiz', function(req, res) {
@@ -232,12 +232,12 @@ AV.Cloud.define('getRandomTestItem', function(request, response) {
     query.limit(1);
     return query.find();
   })
-  .then(function(results) {
-    return response.success(results[0]);
-  })
-  .catch(function(_error) {
-    return response.error('movie lookup failed');
-  });
+    .then(function(results) {
+      return response.success(results[0]);
+    })
+    .catch(function(_error) {
+      return response.error('movie lookup failed');
+    });
 });
 
 var ComplexObject = AV.Object.extend('ComplexObject');
@@ -329,9 +329,9 @@ AV.Cloud.define('testRun_options_callback', function(request, response) {
       }
     });
   })
-  .catch(function(err) {
-    assert.ifError(err);
-  });
+    .catch(function(err) {
+      assert.ifError(err);
+    });
 });
 
 AV.Cloud.define('testRun_promise', function(request, response) {
@@ -374,11 +374,11 @@ AV.Cloud.define('requestPasswordResetBySmsCode', function (request, response) {
     return response.error('phone 不能为空');
   }
   AV.User.requestPasswordResetBySmsCode(phone,{useMasterKey: true})
-  .then(function (success) {
-    return response.success(success);
-  }, function (error) {
-    return response.error(error);
-  });
+    .then(function (success) {
+      return response.success(success);
+    }, function (error) {
+      return response.error(error);
+    });
 });
 
 AV.Cloud.define('testThrowError', function(request, response) {
@@ -436,4 +436,12 @@ AV.Cloud.afterDelete('IgnoreHookTest', function(request) {
   console.log('IgnoreHookTest', 'afterDelete', request.object.id);
 });
 
-module.exports = AV.Cloud;
+exports.fibonacci = (num) => {
+  if (num <= 1) return 1;
+
+  return exports.fibonacci(num - 1) + exports.fibonacci(num - 2);
+};
+
+AV.Cloud.define('fibonacci', async (req) => {
+  return await exports.fibonacci(req.params.num || 10);
+});
