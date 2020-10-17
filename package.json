@@ -1,1 +1,29 @@
-{}
+{
+  "name": "leanengine-unit-test",
+  "dependencies": {
+    "lodash": "^4.17.20"
+  },
+  "scripts": {
+    "prepublish": "echo prepublish",
+    "prepare": "echo prepare",
+    "prepublishOnly": "echo prepublishOnly",
+    "prepack": "echo prepack",
+    "postpack": "echo postpack",
+    "publish": "echo publish",
+    "preinstall": "echo preinstall",
+    "install": "echo install",
+    "preuninstall": "echo preuninstall",
+    "postuninstall": "echo postuninstall",
+    "preversion": "echo preversion",
+    "version": "echo version",
+    "postversion": "echo postversion",
+    "pretest": "echo pretest",
+    "prestop": "echo prestop",
+    "prestart": "echo prestart",
+    "prerestart": "echo prerestart",
+    "preshrinkwrap": "echo preshrinkwrap"
+  },
+  "devDependencies": {
+    "should": "^13.2.3"
+  }
+}
