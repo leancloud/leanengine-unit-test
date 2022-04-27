@@ -1,0 +1,4 @@
+extraPorts:
+  - name: game
+    protocol: udp
+    containerPort: 4000
