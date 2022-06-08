@@ -1,3 +1,4 @@
+enabledLocalCache: true
 extraPorts:
   - name: game
     protocol: udp
