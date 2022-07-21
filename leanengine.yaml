@@ -1,4 +1,9 @@
 enabledLocalCache: true
+install:
+  - curl -Lo factorio.tar.xz https://www.factorio.com/get-download/1.1.61/headless/linux64
+  - tar --strip-components 1 -xf factorio.tar.xz
+  - rm factorio.tar.xz
+  - {use: 'default'}
 extraPorts:
   - name: game
     protocol: udp
