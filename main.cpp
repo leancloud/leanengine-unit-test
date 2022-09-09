@@ -1,6 +1,5 @@
 #include <arpa/inet.h>
 #include <cstdlib>
-#include <fcntl.h>
 #include <iostream>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -19,77 +18,66 @@
 
 const int BUFFER_SIZE = 4096;
 
-std::vector<std::thread*> runningWorkerThreads;
+std::vector<std::thread*> runningWorkers;
 std::mutex runningWorkerMutex;
 
-void cleanWorkerThreads() {
-  runningWorkerThreads.erase(std::remove_if(begin(runningWorkerThreads), end(runningWorkerThreads), [](std::thread* worker) {
+void cleanWorkers() {
+  runningWorkers.erase(std::remove_if(begin(runningWorkers), end(runningWorkers), [](std::thread* worker) {
     return !worker->joinable();
-  }), end(runningWorkerThreads));
+  }), end(runningWorkers));
 }
 
 // Modified from https://github.com/toprakkeskin/Cpp-Socket-Simple-TCP-Echo-Server-Client/blob/master/server/tcp-echo-server-main.cpp
 int serveTCP(int listenPort) {
-  int slistener = socket(AF_INET, SOCK_STREAM, 0);
+  int server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
-  if (slistener < 0) {
+  if (server_socket < 0) {
     std::cerr << "[TCP] Socket cannot be created!\n";
     return -2;
   }
 
-  sockaddr_in saddr;
-  saddr.sin_family = AF_INET;
-  saddr.sin_port = htons(listenPort);
+  sockaddr_in server_addr;
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = htons(listenPort);
 
-  inet_pton(AF_INET, "0.0.0.0", &saddr.sin_addr);
+  inet_pton(AF_INET, "0.0.0.0", &server_addr.sin_addr);
 
-  char buf[INET_ADDRSTRLEN];
-
-  if (bind(slistener, (sockaddr *)&saddr, sizeof(saddr)) < 0) {
-    std::cerr << "[TCP] Created socket cannot be binded to ("
-              << inet_ntop(AF_INET, &saddr.sin_addr, buf, INET_ADDRSTRLEN)
-              << ":" << ntohs(saddr.sin_port) << ")\n";
+  if (bind(server_socket, (sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    std::cerr << "[TCP] Could not bind socket\n";
     return -3;
   }
 
-  if (listen(slistener, SOMAXCONN) < 0) {
+  if (listen(server_socket, SOMAXCONN) < 0) {
     std::cerr << "[TCP] Socket cannot be switched to listen mode!\n";
     return -4;
   }
 
-  std::cout << "[TCP] Socket is listening on "
-            << inet_ntop(AF_INET, &saddr.sin_addr, buf, INET_ADDRSTRLEN)
-            << ":" << ntohs(saddr.sin_port) << "\n";
+  std::cout << "[TCP] Socket is listening on " << listenPort << "\n";
 
   while (true) {
     sockaddr_in client_addr;
     socklen_t client_addr_size = sizeof(client_addr);
-    int sock_client;
-    if ((sock_client = accept(slistener, (sockaddr*)&client_addr, &client_addr_size)) < 0) {
+    int client_socket;
+    if ((client_socket = accept(server_socket, (sockaddr*)&client_addr, &client_addr_size)) < 0) {
       std::cerr << "[TCP] Connections cannot be accepted for a reason.\n";
       return -5;
     }
 
     std::cout << "[TCP] A connection is accepted now.\n";
 
-    std::thread *worker = new std::thread([client_addr, client_addr_size, buf, sock_client](){
-      char host[NI_MAXHOST];
-      char svc[NI_MAXSERV];
-      if (getnameinfo(
-            (sockaddr*)&client_addr, client_addr_size,
-            host, NI_MAXHOST,
-            svc, NI_MAXSERV, 0) != 0) {
-        std::cout << "[TCP] Client: (" << inet_ntop(AF_INET, &client_addr.sin_addr, (char*)buf, INET_ADDRSTRLEN)
-                  << ":" << ntohs(client_addr.sin_port) << ")\n";
-      } else {
-        std::cout << "[TCP] Client: (host: " << host << ", service: " << svc << ")\n";
+    std::thread *worker = new std::thread([client_addr, client_addr_size, client_socket](){
+      char *hostaddrp = inet_ntoa(client_addr.sin_addr);
+      if (hostaddrp == NULL) {
+        std::cerr << "[TCP] Failed on inet_ntoa.\n";
       }
+
+      std::cout << "[TCP] " << hostaddrp << ":" << client_addr.sin_port << " connected...\n";
 
       char buffer[BUFFER_SIZE];
       int bytes;
 
       while (true) {
-        bytes = recv(sock_client, &buffer, BUFFER_SIZE, 0);
+        bytes = recv(client_socket, &buffer, BUFFER_SIZE, 0);
 
         if (bytes == 0) {
           std::cout << "[TCP] Client is disconnected.\n";
@@ -98,28 +86,26 @@ int serveTCP(int listenPort) {
           std::cerr << "[TCP] Something went wrong while receiving data!.\n";
           break;
         } else {
-          std::cout << "[TCP] Recevied " << bytes << " bytes of data\n";
+          std::cout << "[TCP] Received " << bytes << " bytes from " << hostaddrp << ":" << client_addr.sin_port << "\n";
 
-          std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 1000));
-
-          if (send(sock_client, &buffer, bytes, 0) < 0) {
+          if (send(client_socket, &buffer, bytes, 0) < 0) {
             std::cerr << "[TCP] Message cannot be send, exiting...\n";
             break;
           }
         }
       }
 
-      close(sock_client);
-      std::cout << "[TCP] Client socket is closed.\n";
+      close(client_socket);
+      std::cout << "[TCP] " << hostaddrp << ":" << client_addr.sin_port << " disconnected.\n";
     });
 
     runningWorkerMutex.lock();
-    runningWorkerThreads.push_back(worker);
-    cleanWorkerThreads();
+    runningWorkers.push_back(worker);
+    cleanWorkers();
     runningWorkerMutex.unlock();
   }
 
-  close(slistener);
+  close(server_socket);
   std::cout << "[TCP] Main listener socket is closed.\n";
 
   return 0;
@@ -127,55 +113,43 @@ int serveTCP(int listenPort) {
 
 // Modified from https://gist.github.com/suyash/0f100b1518334fcf650bbefd54556df9
 int serveUDP(int listenPort) {
-	struct sockaddr_in serverAddress;
-	memset(&serverAddress, 0, sizeof(serverAddress));
-	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_port = htons(listenPort);
-	serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+	struct sockaddr_in server_addr;
+	memset(&server_addr, 0, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(listenPort);
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	int sock;
-	if ((sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+	int server_socket;
+	if ((server_socket = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
     std::cerr << "[UDP] Could not create socket\n";
 		return 1;
 	}
 
-	if ((bind(sock, (struct sockaddr *)&serverAddress,
-	          sizeof(serverAddress))) < 0) {
+	if ((bind(server_socket, (struct sockaddr *)&server_addr,
+	          sizeof(server_addr))) < 0) {
     std::cerr << "[UDP] Could not bind socket\n";
 		return 1;
 	}
 
-  char buf[INET_ADDRSTRLEN];
-  std::cout << "[UDP] Socket is listening on "
-            << inet_ntop(AF_INET, &serverAddress.sin_addr, buf, INET_ADDRSTRLEN)
-            << ":" << ntohs(serverAddress.sin_port) << "\n";
+  std::cout << "[UDP] Socket is listening on " << listenPort << "\n";
 
 	struct sockaddr_in client_address;
 	socklen_t client_address_len = sizeof(client_address);
 
 	while (true) {
-		char buffer[4096];
-    char host[NI_MAXHOST];
-    char svc[NI_MAXSERV];
+    char *hostaddrp = inet_ntoa(client_address.sin_addr);
+    if (hostaddrp == NULL) {
+      std::cerr << "[UDP] Failed on inet_ntoa.\n";
+    }
 
-		int bytes = recvfrom(sock, buffer, sizeof(buffer), 0,
+		char buffer[BUFFER_SIZE];
+		int bytes = recvfrom(server_socket, buffer, sizeof(buffer), 0,
 		                   (struct sockaddr *)&client_address,
 		                   &client_address_len);
 
-    std::cout << "[UDP] Recevied " << bytes << " bytes from " << inet_ntoa(client_address.sin_addr) << "\n";
+    std::cout << "[UDP] Received " << bytes << " bytes from " << hostaddrp << ":" << client_address.sin_port << "\n";
 
-    if (getnameinfo(
-          (sockaddr*)&client_address, client_address_len,
-          host, NI_MAXHOST,
-          svc, NI_MAXSERV, 0) != 0) {
-      std::cout << "[UDP] Client: (" << inet_ntop(AF_INET, &client_address.sin_addr, (char*)buf, INET_ADDRSTRLEN)
-                << ":" << ntohs(client_address.sin_port) << ")\n";
-    } else {
-      std::cout << "[UDP] Client: (host: " << host << ", service: " << svc << ")\n";
-    }
-
-		sendto(sock, buffer, bytes, 0, (struct sockaddr *)&client_address,
-		       sizeof(client_address));
+		sendto(server_socket, buffer, bytes, 0, (struct sockaddr *)&client_address, sizeof(client_address));
 	}
 
 	return 0;
@@ -183,89 +157,80 @@ int serveUDP(int listenPort) {
 
 // Modified from https://gist.github.com/bdahlia/7826649
 int serveHTTP(int listenPort) {
-  /* variables for connection management */
-  int parentfd;          /* parent socket */
-  int childfd;           /* child socket */
-  socklen_t clientlen;         /* byte size of client's address */
-  int optval;            /* flag value for setsockopt */
-  struct sockaddr_in serveraddr; /* server's addr */
-  struct sockaddr_in clientaddr; /* client addr */
+  int server_socket;
+  int client_socket;
 
-  /* variables for connection I/O */
-  FILE *stream;          /* stream version of childfd */
-  char buf[BUFFER_SIZE];     /* message buffer */
-  char method[BUFFER_SIZE];  /* request method */
-  char uri[BUFFER_SIZE];     /* request uri */
-  char version[BUFFER_SIZE]; /* request method */
-  char *p;               /* temporary pointer */
-  int fd;                /* static content filedes */
-  int pid;               /* process id from fork */
+  struct sockaddr_in server_addr;
+  struct sockaddr_in client_addr;
 
-  /* open socket descriptor */
-  parentfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (parentfd < 0) {
+  server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (server_socket < 0) {
     std::cerr << "[HTTP] Opening socket failed.\n";
     return 1;
   }
 
-  optval = 1;
-  setsockopt(parentfd, SOL_SOCKET, SO_REUSEADDR,
-              (const void *)&optval , sizeof(int));
+  int optval = 1;
+  setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int));
 
-  bzero((char *) &serveraddr, sizeof(serveraddr));
-  serveraddr.sin_family = AF_INET;
-  serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  serveraddr.sin_port = htons(listenPort);
-  if (bind(parentfd, (struct sockaddr *) &serveraddr,
-            sizeof(serveraddr)) < 0) {
-    std::cerr << "[HTTP] Bind socket failed.\n";
+  bzero((char *) &server_addr, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  server_addr.sin_port = htons(listenPort);
+  if (bind(server_socket, (struct sockaddr *) &server_addr,
+            sizeof(server_addr)) < 0) {
+    std::cerr << "[HTTP] Bind socket failed\n";
     return 1;
   }
 
-  if (listen(parentfd, SOMAXCONN) < 0) {
-    std::cerr << "[HTTP] Listen socket failed.\n";
+  if (listen(server_socket, SOMAXCONN) < 0) {
+    std::cerr << "[HTTP] Listen socket failed\n";
     return 1;
   }
 
-  const char* helloResponse = "HTTP/1.1 200 OK\n\nHello\n";
-  const char* notFoundResponse = "HTTP/1.1 404 Not Found\n\nNot Found\n";
+  std::cout << "[HTTP] Socket is listening on " << listenPort << "\n";
 
-  clientlen = sizeof(clientaddr);
-  while (1) {
-      childfd = accept(parentfd, (struct sockaddr *) &clientaddr, &clientlen);
-      if (childfd < 0) {
+  socklen_t clientlen = sizeof(client_addr);
+
+  while (true) {
+      client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &clientlen);
+      if (client_socket < 0) {
         std::cerr << "[HTTP] Accept client socket failed.\n";
         continue;
       }
 
-      std::thread *worker = new std::thread([clientaddr, childfd, helloResponse, notFoundResponse]() {
-        char *hostaddrp = inet_ntoa(clientaddr.sin_addr);
+      std::thread *worker = new std::thread([client_addr, client_socket]() {
+        const char* helloResponse = "HTTP/1.1 200 OK\n\nHello\n";
+        const char* notFoundResponse = "HTTP/1.1 404 Not Found\n\nNot Found\n";
+
+        char *hostaddrp = inet_ntoa(client_addr.sin_addr);
         if (hostaddrp == NULL) {
           std::cerr << "[HTTP] Failed on inet_ntoa.\n";
         }
 
-        char requestBuffer[BUFFER_SIZE];
-        int bytes = recv(childfd, &requestBuffer, BUFFER_SIZE, 0);
+        std::cout << "[HTTP] Received request from " << hostaddrp << ":" << client_addr.sin_port << "\n";
+
+        char buffer[BUFFER_SIZE];
+        int bytes = recv(client_socket, &buffer, sizeof(buffer), 0);
         int sentBytes;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 1000));
 
-        if (!strncmp(requestBuffer, "GET / ", 6)) {
-          sentBytes = send(childfd, helloResponse, strlen(helloResponse), 0);
+        if (!strncmp(buffer, "GET / ", 6)) {
+          sentBytes = send(client_socket, helloResponse, strlen(helloResponse), 0);
         } else {
-          sentBytes = send(childfd, notFoundResponse, strlen(notFoundResponse), 0);
+          sentBytes = send(client_socket, notFoundResponse, strlen(notFoundResponse), 0);
         }
 
         if (sentBytes < 0) {
-          std::cerr << "[HTTP] Send response failed.\n";
+          std::cerr << "[HTTP] Send response failed\n";
         }
 
-        close(childfd);
+        close(client_socket);
       });
 
       runningWorkerMutex.lock();
-      runningWorkerThreads.push_back(worker);
-      cleanWorkerThreads();
+      runningWorkers.push_back(worker);
+      cleanWorkers();
       runningWorkerMutex.unlock();
   }
 
@@ -273,15 +238,15 @@ int serveHTTP(int listenPort) {
 }
 
 void signalHandler(int signalNumber) {
-  std::cerr << "[SIGNAL] Recevied " << signalNumber << ".\n";
+  std::cerr << "[SIGNAL] Received " << signalNumber << "\n";
 
   runningWorkerMutex.lock();
 
-  cleanWorkerThreads();
+  cleanWorkers();
 
-  std::cerr << "[SIGNAL] " << runningWorkerThreads.size() << " workers are running, wait for them ...\n";
+  std::cerr << "[SIGNAL] " << runningWorkers.size() << " workers are running, wait for them ...\n";
 
-  for (auto &worker : runningWorkerThreads) {
+  for (auto &worker : runningWorkers) {
     worker->join();
   }
 
