@@ -1,2 +1,9 @@
 build: make
 run: ./main
+extraPorts:
+  - name: echo
+    protocol: udp
+    containerPort: 4000
+  - name: echo
+    protocol: tcp
+    containerPort: 4000
