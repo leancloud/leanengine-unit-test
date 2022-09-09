@@ -113,46 +113,46 @@ int serveTCP(int listenPort) {
 
 // Modified from https://gist.github.com/suyash/0f100b1518334fcf650bbefd54556df9
 int serveUDP(int listenPort) {
-	struct sockaddr_in server_addr;
-	memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(listenPort);
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  struct sockaddr_in server_addr;
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = htons(listenPort);
+  server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	int server_socket;
-	if ((server_socket = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+  int server_socket;
+  if ((server_socket = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
     std::cerr << "[UDP] Could not create socket\n";
-		return 1;
-	}
+    return 1;
+  }
 
-	if ((bind(server_socket, (struct sockaddr *)&server_addr,
-	          sizeof(server_addr))) < 0) {
+  if ((bind(server_socket, (struct sockaddr *)&server_addr,
+            sizeof(server_addr))) < 0) {
     std::cerr << "[UDP] Could not bind socket\n";
-		return 1;
-	}
+    return 1;
+  }
 
   std::cout << "[UDP] Socket is listening on " << listenPort << "\n";
 
-	struct sockaddr_in client_address;
-	socklen_t client_address_len = sizeof(client_address);
+  struct sockaddr_in client_address;
+  socklen_t client_address_len = sizeof(client_address);
 
-	while (true) {
+  while (true) {
     char *hostaddrp = inet_ntoa(client_address.sin_addr);
     if (hostaddrp == NULL) {
       std::cerr << "[UDP] Failed on inet_ntoa.\n";
     }
 
-		char buffer[BUFFER_SIZE];
-		int bytes = recvfrom(server_socket, buffer, sizeof(buffer), 0,
-		                   (struct sockaddr *)&client_address,
-		                   &client_address_len);
+    char buffer[BUFFER_SIZE];
+    int bytes = recvfrom(server_socket, buffer, sizeof(buffer), 0,
+                       (struct sockaddr *)&client_address,
+                       &client_address_len);
 
     std::cout << "[UDP] Received " << bytes << " bytes from " << hostaddrp << ":" << client_address.sin_port << "\n";
 
-		sendto(server_socket, buffer, bytes, 0, (struct sockaddr *)&client_address, sizeof(client_address));
-	}
+    sendto(server_socket, buffer, bytes, 0, (struct sockaddr *)&client_address, sizeof(client_address));
+  }
 
-	return 0;
+  return 0;
 }
 
 // Modified from https://gist.github.com/bdahlia/7826649
