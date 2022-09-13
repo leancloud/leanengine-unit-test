@@ -12,20 +12,17 @@
 #include <thread>
 #include <type_traits>
 #include <unistd.h>
-#include <vector>
-#include <algorithm>
+#include <deque>
 #include <mutex>
+#include <atomic>
 
 const int BUFFER_SIZE = 4096;
 
-std::vector<std::thread*> runningWorkers;
-std::mutex runningWorkerMutex;
+std::atomic<bool> shuttingDown(false);
+std::thread *supervisorThread;
 
-void cleanWorkers() {
-  runningWorkers.erase(std::remove_if(begin(runningWorkers), end(runningWorkers), [](std::thread* worker) {
-    return !worker->joinable();
-  }), end(runningWorkers));
-}
+std::deque<std::thread*> runningWorkers;
+std::mutex runningWorkerMutex;
 
 // Modified from https://github.com/toprakkeskin/Cpp-Socket-Simple-TCP-Echo-Server-Client/blob/master/server/tcp-echo-server-main.cpp
 int serveTCP(int listenPort) {
@@ -59,13 +56,15 @@ int serveTCP(int listenPort) {
     socklen_t client_addr_size = sizeof(client_addr);
     int client_socket;
     if ((client_socket = accept(server_socket, (sockaddr*)&client_addr, &client_addr_size)) < 0) {
-      std::cerr << "[TCP] Connections cannot be accepted for a reason.\n";
+      std::cerr << "[TCP] Connections cannot be accepted.\n";
       return -5;
     }
 
     std::cout << "[TCP] A connection is accepted now.\n";
 
-    std::thread *worker = new std::thread([client_addr, client_addr_size, client_socket](){
+    runningWorkerMutex.lock();
+
+    runningWorkers.push_back(new std::thread([client_addr, client_addr_size, client_socket](){
       char *hostaddrp = inet_ntoa(client_addr.sin_addr);
       if (hostaddrp == NULL) {
         std::cerr << "[TCP] Failed on inet_ntoa.\n";
@@ -80,7 +79,6 @@ int serveTCP(int listenPort) {
         bytes = recv(client_socket, &buffer, BUFFER_SIZE, 0);
 
         if (bytes == 0) {
-          std::cout << "[TCP] Client is disconnected.\n";
           break;
         } else if (bytes < 0) {
           std::cerr << "[TCP] Something went wrong while receiving data!.\n";
@@ -97,11 +95,8 @@ int serveTCP(int listenPort) {
 
       close(client_socket);
       std::cout << "[TCP] " << hostaddrp << ":" << client_addr.sin_port << " disconnected.\n";
-    });
+    }));
 
-    runningWorkerMutex.lock();
-    runningWorkers.push_back(worker);
-    cleanWorkers();
     runningWorkerMutex.unlock();
   }
 
@@ -152,6 +147,9 @@ int serveUDP(int listenPort) {
     sendto(server_socket, buffer, bytes, 0, (struct sockaddr *)&client_address, sizeof(client_address));
   }
 
+  close(server_socket);
+  std::cout << "[UDP] Main listener socket is closed.\n";
+
   return 0;
 }
 
@@ -198,9 +196,11 @@ int serveHTTP(int listenPort) {
         continue;
       }
 
-      std::thread *worker = new std::thread([client_addr, client_socket]() {
-        const char* helloResponse = "HTTP/1.1 200 OK\n\nHello\n";
-        const char* notFoundResponse = "HTTP/1.1 404 Not Found\n\nNot Found\n";
+      runningWorkerMutex.lock();
+
+      runningWorkers.push_back(new std::thread([client_addr, client_socket]() {
+        const char* helloResponse = "HTTP/1.1 200 OK\r\n\r\nHello\n";
+        const char* notFoundResponse = "HTTP/1.1 404 Not Found\r\n\r\nNot Found\n";
 
         char *hostaddrp = inet_ntoa(client_addr.sin_addr);
         if (hostaddrp == NULL) {
@@ -226,28 +226,54 @@ int serveHTTP(int listenPort) {
         }
 
         close(client_socket);
-      });
+      }));
 
-      runningWorkerMutex.lock();
-      runningWorkers.push_back(worker);
-      cleanWorkers();
       runningWorkerMutex.unlock();
   }
 
+  close(server_socket);
+  std::cout << "[HTTP] Main listener socket is closed.\n";
+
   return 0;
+}
+
+void supervisor() {
+  while (true) {
+    std::thread *worker = nullptr;
+
+    runningWorkerMutex.lock();
+
+    if (runningWorkers.size() > 0) {
+      worker = runningWorkers.front();
+      runningWorkers.pop_front();
+    }
+
+    if (!worker && shuttingDown) {
+      break;
+    }
+
+    runningWorkerMutex.unlock();
+
+    if (worker) {
+      worker->join();
+      delete worker;
+    } else {
+      sleep(1);
+    }
+  }
 }
 
 void signalHandler(int signalNumber) {
   std::cerr << "[SIGNAL] Received " << signalNumber << "\n";
 
+  shuttingDown = true;
+
   runningWorkerMutex.lock();
-
-  cleanWorkers();
-
   std::cerr << "[SIGNAL] " << runningWorkers.size() << " workers are running, wait for them ...\n";
+  runningWorkerMutex.unlock();
 
-  for (auto &worker : runningWorkers) {
-    worker->join();
+  if (supervisorThread->joinable()) {
+    supervisorThread->join();
   }
 
   exit(0);
@@ -259,6 +285,8 @@ int main(int argc, char **argv) {
   std::thread threadTcp(serveTCP, 4000);
   std::thread threadUdp(serveUDP, 4000);
   std::thread threadHTTP(serveHTTP, 3000);
+
+  supervisorThread = new std::thread(supervisor);
 
   signal(SIGTERM, signalHandler);
   signal(SIGINT, signalHandler);
