@@ -15,6 +15,7 @@
 #include <deque>
 #include <mutex>
 #include <atomic>
+#include <signal.h>
 
 const int BUFFER_SIZE = 4096;
 

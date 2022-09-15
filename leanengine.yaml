@@ -1,5 +1,4 @@
-build: make
-run: ./main
+run: ./cpp-socket
 extraPorts:
   - name: echo
     protocol: udp
