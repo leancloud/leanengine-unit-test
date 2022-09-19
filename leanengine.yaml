@@ -1,4 +1,3 @@
-run: ./cpp-socket
 extraPorts:
   - name: echo
     protocol: udp
