@@ -1,8 +1,8 @@
 run: ./cpp-socket
 extraPorts:
-  - name: echo
+  - name: udp-echo
     protocol: udp
     containerPort: 4000
-  - name: echo
+  - name: tcp-echo
     protocol: tcp
     containerPort: 4000
