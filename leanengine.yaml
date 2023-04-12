@@ -1,10 +1,13 @@
-enabledLocalCache: true
 install:
-  - curl -Lo factorio.tar.xz https://www.factorio.com/get-download/1.1.61/headless/linux64
+  - curl -Lo factorio.tar.xz https://www.factorio.com/get-download/1.1.74/headless/linux64
   - tar --strip-components 1 -xf factorio.tar.xz
-  - rm factorio.tar.xz
+  - chmod +x ./bin/x64/factorio
+  # - curl -Lo rclone.zip https://downloads.rclone.org/v1.62.2/rclone-v1.62.2-linux-amd64.zip
+  - curl -Lo rclone.tar.gz https://releases-files.lcfile.com/MrWtOE4PAFRNQgBhFWx2VsSg52G0Edn6/rclone-v1.62.2-linux-amd64.tar.gz
+  - tar --strip-components 1 -xzf rclone.tar.gz
+  - rm factorio.tar.xz rclone.tar.gz
   - {use: 'default'}
 extraPorts:
-  - name: game
+  - name: factorio
     protocol: udp
-    containerPort: 4000
+    containerPort: 34197
